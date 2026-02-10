@@ -1,0 +1,1233 @@
+<!doctype html>
+<html lang="ja">
+<head>
+
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#111111">
+  <link rel="icon" href="./icon-48.png" sizes="48x48">
+  <link rel="apple-touch-icon" href="./icon-180.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+  <meta name="theme-color" content="#111111">
+  <link rel="icon" href="./icon-48.png" sizes="48x48">
+  <link rel="apple-touch-icon" href="./icon-180.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>KAOKAO</title>
+  <style>
+    :root{--bg:#fff;--fg:#111;--muted:#666;--border:#ddd;--btn:#111;--btnText:#fff;--btnSub:#f3f3f3;}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans JP",sans-serif;background:var(--bg);color:var(--fg);}
+    .wrap{max-width:860px;margin:0 auto;padding:16px;}
+    header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:14px;}
+    h1{font-size:22px;margin:0;letter-spacing:.10em;}
+    .small{font-size:12px;color:var(--muted);margin:0;}
+    .card{border:1px solid var(--border);border-radius:14px;padding:14px;background:#fff;box-shadow:0 1px 0 rgba(0,0,0,.04);}
+    .toprow{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
+    .stageTitle{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+    .stageTitle h2{margin:0;font-size:15px;}
+    .badge{font-size:12px;padding:4px 10px;border:1px solid var(--border);border-radius:999px;color:var(--muted);}
+    .score{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;}
+    canvas{
+      width:min(92vw,520px);
+      height:min(92vw,520px);
+      display:block;
+      margin: 0 auto;
+      border:1px solid var(--border);
+      border-radius:12px;
+      background:#fff;
+      touch-action:none;
+    }
+    .nameBig{margin:10px 0 0;font-size:22px;font-weight:800;letter-spacing:.08em;text-align:center;}
+    .choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-top:12px;}
+    
+    .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;align-items:center;justify-content:center;}
+    button{border:1px solid var(--border);border-radius:12px;padding:11px 14px;font-size:14px;cursor:pointer;background:var(--btnSub);color:var(--fg);}
+    button.primary{background:var(--btn);color:var(--btnText);border-color:var(--btn);}
+    button:disabled{opacity:.55;cursor:not-allowed;}
+    .choiceFace{padding:8px;}
+    .choiceFace canvas{width:100%;height:auto;display:block;border:1px solid var(--border);border-radius:10px;background:#fff;}
+    .choiceFace{background:#fff;}
+
+    .msg{margin-top:10px;padding:10px 12px;border-radius:12px;border:1px dashed var(--border);color:var(--muted);font-size:13px;line-height:1.55;white-space:pre-wrap;}
+    footer{margin-top:12px;font-size:12px;color:var(--muted);}
+  
+    /* --- insert overlay --- */
+    .insert{
+      position:fixed; inset:0;
+      display:flex; align-items:center; justify-content:center;
+      background:rgba(255,255,255,.92);
+      opacity:0; pointer-events:none;
+      transition:opacity .18s ease;
+      z-index:9999;
+    }
+    .insert.show{ opacity:1; pointer-events:auto; }
+    .insertBox{
+      width:min(520px, 86vw);
+      border:2px solid var(--border);
+      border-radius:16px;
+      padding:18px 16px;
+      background:#fff;
+      box-shadow:0 12px 30px rgba(0,0,0,.10);
+      transform:scale(.98);
+      transition:transform .18s ease;
+      text-align:center;
+    }
+    .insert.show .insertBox{ transform:scale(1); }
+    .insertTitle{
+      font-weight:900;
+      font-size:28px;
+      letter-spacing:.08em;
+    }
+    .insertSub{
+      margin-top:6px;
+      font-weight:700;
+      font-size:16px;
+      opacity:.85;
+    }
+
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>KAOKAO</h1>
+</header>
+
+    <section class="card">
+      <div class="toprow">
+        <div class="stageTitle">
+          <h2 id="stageH2">スタート</h2>
+          <span class="badge" id="badge">準備</span>
+        </div>
+        <div class="score">
+          <span class="badge" id="count">人数: 2</span>
+          <span class="badge" id="streak">連続: 0</span>
+          <span class="badge" id="best">最高: 0</span>
+        </div>
+      </div>
+
+      <canvas id="cv" width="720" height="720" aria-label="顔表示"></canvas>
+
+      <div class="nameBig" id="nameBig" style="display:none;"></div>
+      <div class="choices" id="choices" style="display:none;"></div>
+
+      <div class="row" id="controls">
+        <button class="primary" id="btnStart">はじめる</button>
+        <button id="btnNext" style="display:none;">次へ</button>
+        <button id="btnNextRound" class="primary" style="display:none;">次の問題</button>
+      </div>
+
+      <div class="msg" id="msg">2人の顔と名前を覚えます（2枚）から開始します。
+最後に、いま見た誰かの顔が出るので、選択肢から名前を当ててください。
+5連続正解するたびに、覚える人数が1人ずつ増えます（最大5人）。</div>
+</section>
+  </div>
+
+
+  <div id="insert" class="insert" aria-hidden="true">
+    <div class="insertBox">
+      <div id="insertTitle" class="insertTitle"></div>
+      <div id="insertSub" class="insertSub"></div>
+    </div>
+  </div>
+
+<script>(() => {
+  // --- 名前（上位20） ---
+  // 出典：名字由来netの順位をもとにしたWikipediaの「人数の多い日本の名前一覧」(1〜20位)
+  const TOP20_SURNAME = [
+    "佐藤",
+    "鈴木",
+    "高橋",
+    "田中",
+    "伊藤",
+    "渡辺",
+    "山本",
+    "中村",
+    "小林",
+    "加藤",
+    "吉田",
+    "山田",
+    "佐々木",
+    "山口",
+    "松本",
+    "井上",
+    "木村",
+    "林",
+    "斎藤",
+    "清水",
+    "キャサリン",
+    "凛太郎",
+    "塔子",
+    "杏子",
+    "敦"
+  ];
+  const MIN_COUNT = 2;
+  const MAX_COUNT = 5;
+  const LEVEL_STEP = 5; // 5連続ごとに人数+1
+  let personCount = MIN_COUNT;
+
+  // --- 乱数（seed付き） ---
+  function mulberry32(seed){
+    let t = seed >>> 0;
+    return function(){
+      t += 0x6D2B79F5;
+      let x = Math.imul(t ^ (t >>> 15), 1 | t);
+      x ^= x + Math.imul(x ^ (x >>> 7), 61 | x);
+      return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+  function randomSeed(){
+    // cryptoがあれば優先
+    if (window.crypto && crypto.getRandomValues){
+      const a = new Uint32Array(1);
+      crypto.getRandomValues(a);
+      return a[0] | 0;
+    }
+    return (Math.random() * 0x7fffffff) | 0;
+  }
+
+  function shuffleInPlace(arr, rng){
+    for(let i=arr.length-1;i>0;i--){
+      const j = Math.floor(rng() * (i+1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+  }
+
+  // --- 顔パラメータ ---
+  function genFaceSafe(rng){
+    const v = () => rng();
+
+    // 重なり回避のため、条件を満たすまで何度か作り直す
+    for(let attempt=0; attempt<120; attempt++){
+      // --- スタイル（離散パターン） ---
+      const eyeStyle  = Math.floor(v() * 3); // 0:丸, 1:アーモンド, 2:点
+      const browStyle = Math.floor(v() * 3); // 0:斜め, 1:水平, 2:カーブ
+      const noseStyle = Math.floor(v() * 3); // 0:折れ線, 1:V字, 2:点
+      const mouthStyle= Math.floor(v() * 4); // 0:カーブ, 1:直線, 2:口開け, 3:への字
+
+      // 顔の傾き（全体の回転）
+      const rot = (v() * 2 - 1) * 0.22;
+
+      // 顔の縦横比（円をちょい楕円にして印象差）
+      const faceSX = 0.92 + v()*0.18; // 0.92..1.10
+      const faceSY = 0.92 + v()*0.18; // 0.92..1.10
+
+      // 線の太さ（印象差）
+      const lineW = 0.9 + v()*0.8; // 0.9..1.7（描画側でスケール）
+
+      // --- 目（先に決める） ---
+      const eyeY = 0.38 + (v() * 2 - 1) * 0.055;
+      const eyeGap = 0.18 + (v() * 2 - 1) * 0.055;
+      let eyeR = 0.035 + (v() * 2 - 1) * 0.011;
+      if(eyeStyle === 2) eyeR *= 0.75; // 点目は小さめ
+      const pupilR = clamp(eyeR * (0.35 + v()*0.25), 0.01, 0.04);
+      const pupilDX = (v() * 2 - 1) * 0.015;
+      const pupilDY = (v() * 2 - 1) * 0.015;
+
+      // --- 眉（目から一定距離だけ上に置く） ---
+      const browLen = 0.18 + (v() * 2 - 1) * 0.055;
+      const browTilt = (v() * 2 - 1) * 0.60;
+      let browGap = 0.10 + (v() * 2 - 1) * 0.035; // 左右眉の中心距離
+      // 眉毛同士が重ならないように、眉の長さに応じて左右の距離を確保
+      // 条件：browGap - browLen >= 0.05（目安）
+      const minGap = browLen + 0.05;
+      if(browGap < minGap) browGap = minGap;
+      browGap = clamp(browGap, 0.11, 0.30);
+
+      const browY = clamp(eyeY - (0.10 + v()*0.08), 0.20, 0.34);
+      const browThick = 0.85 + v()*1.05; // 眉の太さ係数
+
+      // --- 口（下側） ---
+      const mouthY = 0.66 + (v() * 2 - 1) * 0.055;
+      const mouthW = 0.22 + (v() * 2 - 1) * 0.080;
+      let mouthCurve = (v() * 2 - 1) * 0.19;
+      let mouthTilt = (v() * 2 - 1) * 0.26;
+      if(mouthStyle === 1) mouthCurve = 0;          // 直線
+      if(mouthStyle === 3) mouthCurve = -Math.abs(mouthCurve) * 0.9; // への字
+
+      // --- 鼻（目と口の間に収める） ---
+      let noseY = eyeY + (0.12 + v()*0.10);
+      noseY = clamp(noseY, eyeY + 0.12, mouthY - 0.12);
+      const noseSize = 0.065 + (v() * 2 - 1) * 0.022;
+      const noseTilt = (v() * 2 - 1) * 0.50;
+
+      // --- ほくろ（片側だけ・生成側で位置を決める） ---
+      const cheek = v() < 0.45 ? (0.018 + v()*0.022) : 0;
+      const cheekSide = v() < 0.5 ? -1 : 1; // -1:左, 1:右
+
+      // --- ここから「重なり判定」(顔半径Rを1とした座標) ---
+      const by = (browY - 0.5) * 2;
+      const ey = (eyeY - 0.5) * 2;
+      const er = eyeR * 2;
+
+      const halfLen = browLen * 2;
+      const gap = browGap * 2;
+
+      // 眉の内側端が中央で被らない
+      if((gap - halfLen) < 0.08) continue;
+
+      // 眉が目に近すぎない
+      let browLowest;
+      if(browStyle === 2){
+        browLowest = by + 0.08;
+      }else if(browStyle === 1){
+        browLowest = by + 0.02;
+      }else{
+        browLowest = by + Math.abs(browTilt) * halfLen * 0.35;
+      }
+      if(browLowest > ey - er - 0.09) continue;
+
+      // 鼻が目に近すぎない
+      const ny = (noseY - 0.5) * 2;
+      const ns = noseSize * 2;
+      const noseTop = ny - ns*0.55;
+      if(noseTop < ey + er + 0.11) continue;
+
+      // 口が鼻に近すぎない
+      const my = (mouthY - 0.5) * 2;
+      const mc = mouthCurve * 2;
+      const mouthHigh = my + Math.min(0, mc);
+      const noseBottom = ny + ns*0.55;
+      if(mouthHigh < noseBottom + 0.13) continue;
+
+      // 口開けの場合は高さ分の余裕
+      if(mouthStyle === 2){
+        if((my - noseBottom) < 0.22) continue;
+      }
+
+      // --- ほくろ位置（他パーツに重ならない） ---
+      let cheekX = 0, cheekY = 0;
+      if(cheek > 0){
+        const mr = cheek * 2;      // ほくろ半径（R基準）
+        const mw = mouthW * 2;     // 口端x（R基準）
+        const minX = mw + mr + 0.10;
+        const maxX = 0.82 - mr;
+        if(minX >= maxX) continue;
+
+        const yMin = ey + er + mr + 0.10;
+        const yMax = my - mr - 0.10;
+        if(yMin >= yMax) continue;
+
+        let placed = false;
+        for(let k=0; k<30; k++){
+          const x = cheekSide * (minX + v() * (maxX - minX));
+          const y = yMin + v() * (yMax - yMin);
+
+          const limit = (1 - mr - 0.07);
+          if((x*x + y*y) > limit*limit) continue;
+
+          const dn = Math.hypot(x, y - ny);
+          if(dn < ns*0.75 + mr + 0.07) continue;
+
+          const ex = cheekSide * (eyeGap * 2);
+          const de = Math.hypot(x - ex, y - ey);
+          if(de < er + mr + 0.09) continue;
+
+          const dm = Math.hypot(x - cheekSide*mw, y - my);
+          if(dm < mr + 0.11) continue;
+
+          cheekX = x;
+          cheekY = y;
+          placed = true;
+          break;
+        }
+        if(!placed) continue;
+      }
+
+      return {
+        eyeStyle, browStyle, noseStyle, mouthStyle,
+        rot, faceSX, faceSY, lineW,
+        browY, browLen, browTilt, browGap, browThick,
+        eyeY, eyeGap, eyeR, pupilR, pupilDX, pupilDY,
+        noseY, noseSize, noseTilt,
+        mouthY, mouthW, mouthCurve, mouthTilt,
+        cheek, cheekSide, cheekX, cheekY
+      };
+    }
+
+    // フォールバック
+    return {
+      eyeStyle:0,browStyle:0,noseStyle:0,mouthStyle:0,
+      rot:0,faceSX:1,faceSY:1,lineW:1,
+      browY:0.28,browLen:0.18,browTilt:0,browGap:0.22,browThick:1,
+      eyeY:0.38,eyeGap:0.18,eyeR:0.035,pupilR:0.015,pupilDX:0,pupilDY:0,
+      noseY:0.52,noseSize:0.07,noseTilt:0,
+      mouthY:0.66,mouthW:0.24,mouthCurve:0,mouthTilt:0,
+      cheek:0,cheekSide:1,cheekX:0,cheekY:0
+    };
+  }
+
+  function faceVector(f){
+    return [
+      f.eyeStyle, f.browStyle, f.noseStyle, f.mouthStyle,
+      f.rot, f.faceSX, f.faceSY, f.lineW,
+      f.browY, f.browLen, f.browTilt, f.browGap, f.browThick,
+      f.eyeY, f.eyeGap, f.eyeR, f.pupilR, f.pupilDX, f.pupilDY,
+      f.noseY, f.noseSize, f.noseTilt,
+      f.mouthY, f.mouthW, f.mouthCurve, f.mouthTilt,
+      f.cheek, f.cheekSide, f.cheekX, f.cheekY
+    ];
+  }
+
+  function dist(a,b){
+    let s=0;
+    for(let i=0;i<a.length;i++){ const d=a[i]-b[i]; s+=d*d; }
+    return Math.sqrt(s);
+  }
+
+  function genDistinctFaces(seed, count){
+    const rng = mulberry32(seed);
+    const faces = [];
+    const vecs = [];
+    let guard = 0;
+    while(faces.length < count && guard < 2500){
+      guard++;
+      const f = genFaceSafe(rng);
+      const v = faceVector(f);
+      let ok = true;
+      for(const u of vecs){
+        if(dist(u, v) < 0.22){ ok = false; break; }
+      }
+      if(ok){ faces.push(f); vecs.push(v); }
+    }
+    while(faces.length < count) faces.push(genFace(rng));
+    return faces;
+  }
+
+  // --- Canvas描画 ---
+  const cv = document.getElementById('cv');
+  const ctx = cv.getContext('2d');
+
+  function syncCanvasDPR(){
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    const cssW = cv.clientWidth || 520;
+    const cssH = cv.clientHeight || 520;
+    const w = Math.max(1, Math.round(cssW * dpr));
+    const h = Math.max(1, Math.round(cssH * dpr));
+    if(cv.width !== w || cv.height !== h){ cv.width = w; cv.height = h; }
+    ctx.setTransform(1,0,0,1,0,0);
+  }
+
+  function clear(){
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.clearRect(0,0,cv.width,cv.height);
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0,0,cv.width,cv.height);
+  }
+  function drawCenterBanner(){
+    if(!centerBanner) return;
+
+    const w = cv.width, h = cv.height;
+    const s = Math.min(w, h);
+
+    ctx.save();
+
+    // バナー背景
+    ctx.globalAlpha = 0.92;
+    const boxW = s * 0.68;
+    const boxH = s * 0.26; // 高さを増やす
+    const x = (w - boxW) / 2;
+    const y = (h - boxH) / 2;
+
+    const r = Math.max(8, s * 0.02);
+    ctx.fillStyle = "#fff";
+    ctx.strokeStyle = "#111";
+    ctx.lineWidth = Math.max(2, s * 0.006);
+
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + boxW - r, y);
+    ctx.quadraticCurveTo(x + boxW, y, x + boxW, y + r);
+    ctx.lineTo(x + boxW, y + boxH - r);
+    ctx.quadraticCurveTo(x + boxW, y + boxH, x + boxW - r, y + boxH);
+    ctx.lineTo(x + r, y + boxH);
+    ctx.quadraticCurveTo(x, y + boxH, x, y + boxH - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+
+    ctx.fill();
+    ctx.globalAlpha = 1.0;
+    ctx.stroke();
+
+    // 文字
+    ctx.fillStyle = "#111";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    const topSize  = Math.max(12, Math.floor(s * 0.048));
+    const mainSize = Math.max(18, Math.floor(s * 0.10));
+
+    if(centerBannerTop){
+      ctx.font = `700 ${topSize}px system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP", sans-serif`;
+      ctx.fillText(centerBannerTop, w/2, y + boxH*0.30);
+
+      ctx.font = `800 ${mainSize}px system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP", sans-serif`;
+      ctx.fillText(centerBanner, w/2, y + boxH*0.74);
+    }else{
+      ctx.font = `800 ${mainSize}px system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP", sans-serif`;
+      ctx.fillText(centerBanner, w/2, y + boxH*0.55);
+    }
+
+    ctx.restore();
+  }
+
+
+
+  function drawFace(face){
+    syncCanvasDPR();
+    clear();
+
+    const w = cv.width, h = cv.height;
+    const s = Math.min(w, h);
+    const cx = w/2, cy = h/2;
+    const R = s * 0.40;
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(face.rot || 0);
+
+    // 顔の縦横比（少しだけ楕円）
+    const sx = face.faceSX || 1;
+    const sy = face.faceSY || 1;
+    ctx.scale(sx, sy);
+
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = "#111";
+    ctx.fillStyle = "#111";
+
+    const lwBase = Math.max(2, s * 0.006) * (face.lineW || 1);
+
+    // 顔輪郭
+    ctx.lineWidth = lwBase;
+    ctx.beginPath();
+    ctx.arc(0, 0, R, 0, Math.PI*2);
+    ctx.stroke();
+
+    // ---- 座標（顔半径R基準）----
+    const by = (face.browY - 0.5) * R*2;
+    const halfLen = face.browLen * R*2;
+    const gap = face.browGap * R*2;
+
+    const ey = (face.eyeY - 0.5) * R*2;
+    const eg = face.eyeGap * R*2;
+    const er = face.eyeR * R*2;
+
+    const ny = (face.noseY - 0.5) * R*2;
+    const ns = face.noseSize * R*2;
+
+    const my = (face.mouthY - 0.5) * R*2;
+    const mw = face.mouthW * R*2;
+    const mc = face.mouthCurve * R*2;
+
+    // ---- 眉 ----
+    ctx.lineWidth = Math.max(2, s * 0.007) * (face.lineW || 1) * (face.browThick || 1);
+    const tilt = face.browTilt;
+
+    function drawBrow(centerX, flip){
+      const x1 = centerX - halfLen;
+      const x2 = centerX + halfLen;
+      if(face.browStyle === 2){
+        // カーブ眉
+        ctx.beginPath();
+        const midX = (x1 + x2)/2;
+        const lift = (-0.08 * R) * flip;
+        ctx.moveTo(x1, by);
+        ctx.quadraticCurveTo(midX, by + lift, x2, by);
+        ctx.stroke();
+      }else if(face.browStyle === 1){
+        // 水平眉
+        ctx.beginPath();
+        ctx.moveTo(x1, by);
+        ctx.lineTo(x2, by);
+        ctx.stroke();
+      }else{
+        // 斜め眉
+        ctx.beginPath();
+        ctx.moveTo(x1, by - tilt * (halfLen*0.35));
+        ctx.lineTo(x2, by + tilt * (halfLen*0.35));
+        ctx.stroke();
+      }
+    }
+    drawBrow(-gap, 1);
+    drawBrow(gap, -1);
+
+    // ---- 目 ----
+    ctx.lineWidth = lwBase;
+    function drawEye(centerX){
+      if(face.eyeStyle === 2){
+        // 点目（外枠なし）
+        ctx.beginPath();
+        ctx.arc(centerX, ey, er*0.55, 0, Math.PI*2);
+        ctx.fill();
+        return;
+      }
+
+      if(face.eyeStyle === 1){
+        // アーモンド（楕円）
+        const rx = er*1.25;
+        const ry = er*0.75;
+        ctx.beginPath();
+        ctx.ellipse(centerX, ey, rx, ry, 0, 0, Math.PI*2);
+        ctx.stroke();
+      }else{
+        // 丸目
+        ctx.beginPath();
+        ctx.arc(centerX, ey, er, 0, Math.PI*2);
+        ctx.stroke();
+      }
+
+      // 黒目
+      const pr = face.pupilR * R*2;
+      const pdx = face.pupilDX * R*2;
+      const pdy = face.pupilDY * R*2;
+      ctx.beginPath();
+      ctx.arc(centerX + pdx, ey + pdy, pr, 0, Math.PI*2);
+      ctx.fill();
+    }
+    drawEye(-eg);
+    drawEye(eg);
+
+    // ---- 鼻 ----
+    ctx.lineWidth = lwBase;
+    if(face.noseStyle === 2){
+      // 点鼻
+      ctx.beginPath();
+      ctx.arc(0, ny + ns*0.20, Math.max(1.5, ns*0.12), 0, Math.PI*2);
+      ctx.fill();
+    }else if(face.noseStyle === 1){
+      // V字
+      ctx.beginPath();
+      ctx.moveTo(-ns*0.30, ny - ns*0.10);
+      ctx.lineTo(0, ny + ns*0.55);
+      ctx.lineTo(ns*0.30, ny - ns*0.10);
+      ctx.stroke();
+    }else{
+      // 折れ線
+      const nt = face.noseTilt;
+      ctx.beginPath();
+      ctx.moveTo(0, ny - ns*0.55);
+      ctx.lineTo(nt * ns*0.55, ny + ns*0.25);
+      ctx.lineTo(0, ny + ns*0.55);
+      ctx.stroke();
+    }
+
+    // ---- 口 ----
+    ctx.lineWidth = Math.max(2, s * 0.007) * (face.lineW || 1);
+    const mt = face.mouthTilt;
+
+    if(face.mouthStyle === 2){
+      // 口開け
+      const r = Math.max(10, mw*0.55);
+      ctx.beginPath();
+      ctx.arc(0, my, r, 0.10*Math.PI, 0.90*Math.PI);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(0, my + r*0.35, r*0.65, 1.10*Math.PI, 1.90*Math.PI);
+      ctx.stroke();
+    }else if(face.mouthStyle === 1){
+      // 直線
+      ctx.beginPath();
+      ctx.moveTo(-mw, my);
+      ctx.lineTo(mw, my);
+      ctx.stroke();
+    }else{
+      // カーブ / への字（生成側で負）
+      ctx.beginPath();
+      ctx.moveTo(-mw, my - mt*mw*0.2);
+      ctx.quadraticCurveTo(0, my + mc, mw, my + mt*mw*0.2);
+      ctx.stroke();
+    }
+
+    // ---- ほくろ ----
+    if(face.cheek > 0){
+      const cr = face.cheek * R*2;
+      const x = (face.cheekX || 0) * R;
+      const y = (face.cheekY || 0) * R;
+      ctx.beginPath();
+      ctx.arc(x, y, cr, 0, Math.PI*2);
+      ctx.fill();
+    }
+
+    ctx.restore();
+    // 正解バナー
+    drawCenterBanner();
+
+  }
+
+
+  function drawQuestionMark(){
+    syncCanvasDPR();
+    clear();
+    const w = cv.width, h = cv.height;
+    ctx.save();
+    ctx.fillStyle = "#111";
+    const s = Math.min(w,h);
+    ctx.font = `${Math.max(18, Math.floor(s*0.16))}px system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP", sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("？", w/2, h/2);
+    drawCenterBanner();
+    ctx.restore();
+  }
+
+  // 小さな選択肢用：任意のcanvasへ顔を描く
+  function drawFaceTo(canvas, face){
+    const cctx = canvas.getContext("2d");
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+
+    // CSSサイズに合わせて内部解像度を調整
+    const cssW = canvas.clientWidth || 180;
+    const cssH = canvas.clientHeight || 180;
+    const W = Math.max(1, Math.round(cssW * dpr));
+    const H = Math.max(1, Math.round(cssH * dpr));
+    if(canvas.width !== W || canvas.height !== H){
+      canvas.width = W; canvas.height = H;
+    }
+
+    cctx.setTransform(1,0,0,1,0,0);
+    cctx.clearRect(0,0,canvas.width,canvas.height);
+    cctx.fillStyle = "#fff";
+    cctx.fillRect(0,0,canvas.width,canvas.height);
+
+    const w = canvas.width, h = canvas.height;
+    const s = Math.min(w, h);
+    const cx = w/2, cy = h/2;
+    const R = s * 0.40;
+
+    cctx.save();
+    cctx.translate(cx, cy);
+    cctx.rotate(face.rot || 0);
+
+    // 顔の縦横比（少しだけ楕円）
+    const sx = face.faceSX || 1;
+    const sy = face.faceSY || 1;
+    cctx.scale(sx, sy);
+
+    cctx.lineCap = "round";
+    cctx.lineJoin = "round";
+    cctx.strokeStyle = "#111";
+    cctx.fillStyle = "#111";
+
+    const lwBase = Math.max(2, s * 0.006) * (face.lineW || 1);
+
+    // 顔輪郭
+    cctx.lineWidth = lwBase;
+    cctx.beginPath();
+    cctx.arc(0, 0, R, 0, Math.PI*2);
+    cctx.stroke();
+
+    // 座標
+    const by = (face.browY - 0.5) * R*2;
+    const halfLen = face.browLen * R*2;
+    const gap = face.browGap * R*2;
+
+    const ey = (face.eyeY - 0.5) * R*2;
+    const eg = face.eyeGap * R*2;
+    const er = face.eyeR * R*2;
+
+    const ny = (face.noseY - 0.5) * R*2;
+    const ns = face.noseSize * R*2;
+
+    const my = (face.mouthY - 0.5) * R*2;
+    const mw = face.mouthW * R*2;
+    const mc = face.mouthCurve * R*2;
+
+    // 眉
+    cctx.lineWidth = Math.max(2, s * 0.007) * (face.lineW || 1) * (face.browThick || 1);
+    const tilt = face.browTilt;
+
+    function drawBrow(centerX, flip){
+      const x1 = centerX - halfLen;
+      const x2 = centerX + halfLen;
+      if(face.browStyle === 2){
+        cctx.beginPath();
+        const midX = (x1 + x2)/2;
+        const lift = (-0.08 * R) * flip;
+        cctx.moveTo(x1, by);
+        cctx.quadraticCurveTo(midX, by + lift, x2, by);
+        cctx.stroke();
+      }else if(face.browStyle === 1){
+        cctx.beginPath();
+        cctx.moveTo(x1, by);
+        cctx.lineTo(x2, by);
+        cctx.stroke();
+      }else{
+        cctx.beginPath();
+        cctx.moveTo(x1, by - tilt * (halfLen*0.35));
+        cctx.lineTo(x2, by + tilt * (halfLen*0.35));
+        cctx.stroke();
+      }
+    }
+    drawBrow(-gap, 1);
+    drawBrow(gap, -1);
+
+    // 目
+    cctx.lineWidth = lwBase;
+    function drawEye(centerX){
+      if(face.eyeStyle === 2){
+        cctx.beginPath();
+        cctx.arc(centerX, ey, er*0.55, 0, Math.PI*2);
+        cctx.fill();
+        return;
+      }
+      if(face.eyeStyle === 1){
+        const rx = er*1.25;
+        const ry = er*0.75;
+        cctx.beginPath();
+        cctx.ellipse(centerX, ey, rx, ry, 0, 0, Math.PI*2);
+        cctx.stroke();
+      }else{
+        cctx.beginPath();
+        cctx.arc(centerX, ey, er, 0, Math.PI*2);
+        cctx.stroke();
+      }
+      const pr = face.pupilR * R*2;
+      const pdx = face.pupilDX * R*2;
+      const pdy = face.pupilDY * R*2;
+      cctx.beginPath();
+      cctx.arc(centerX + pdx, ey + pdy, pr, 0, Math.PI*2);
+      cctx.fill();
+    }
+    drawEye(-eg);
+    drawEye(eg);
+
+    // 鼻
+    cctx.lineWidth = lwBase;
+    if(face.noseStyle === 2){
+      cctx.beginPath();
+      cctx.arc(0, ny + ns*0.20, Math.max(1.5, ns*0.12), 0, Math.PI*2);
+      cctx.fill();
+    }else if(face.noseStyle === 1){
+      cctx.beginPath();
+      cctx.moveTo(-ns*0.30, ny - ns*0.10);
+      cctx.lineTo(0, ny + ns*0.55);
+      cctx.lineTo(ns*0.30, ny - ns*0.10);
+      cctx.stroke();
+    }else{
+      const nt = face.noseTilt;
+      cctx.beginPath();
+      cctx.moveTo(0, ny - ns*0.55);
+      cctx.lineTo(nt * ns*0.55, ny + ns*0.25);
+      cctx.lineTo(0, ny + ns*0.55);
+      cctx.stroke();
+    }
+
+    // 口
+    cctx.lineWidth = Math.max(2, s * 0.007) * (face.lineW || 1);
+    const mt = face.mouthTilt;
+    if(face.mouthStyle === 2){
+      const r = Math.max(10, mw*0.55);
+      cctx.beginPath();
+      cctx.arc(0, my, r, 0.10*Math.PI, 0.90*Math.PI);
+      cctx.stroke();
+      cctx.beginPath();
+      cctx.arc(0, my + r*0.35, r*0.65, 1.10*Math.PI, 1.90*Math.PI);
+      cctx.stroke();
+    }else if(face.mouthStyle === 1){
+      cctx.beginPath();
+      cctx.moveTo(-mw, my);
+      cctx.lineTo(mw, my);
+      cctx.stroke();
+    }else{
+      cctx.beginPath();
+      cctx.moveTo(-mw, my - mt*mw*0.2);
+      cctx.quadraticCurveTo(0, my + mc, mw, my + mt*mw*0.2);
+      cctx.stroke();
+    }
+
+    // ほくろ
+    if(face.cheek > 0){
+      const cr = face.cheek * R*2;
+      const x = (face.cheekX || 0) * R;
+      const y = (face.cheekY || 0) * R;
+      cctx.beginPath();
+      cctx.arc(x, y, cr, 0, Math.PI*2);
+      cctx.fill();
+    }
+
+    cctx.restore();
+  }
+  function renderFaceAsync(face){
+    requestAnimationFrame(() => drawFace(face));
+  }
+
+  // --- UI / ゲーム進行 ---
+  const stageH2 = document.getElementById('stageH2');
+  const badge = document.getElementById('badge');
+  const countEl = document.getElementById('count');
+  const streakEl = document.getElementById('streak');
+  const bestEl = document.getElementById('best');
+  const msg = document.getElementById('msg');
+  const nameBig = document.getElementById('nameBig');
+  const choicesEl = document.getElementById('choices');
+
+  const btnStart = document.getElementById('btnStart');
+  const btnNext = document.getElementById('btnNext');
+  const btnNextRound = document.getElementById('btnNextRound');
+
+  const insertEl = document.getElementById('insert');
+  const insertTitleEl = document.getElementById('insertTitle');
+  const insertSubEl = document.getElementById('insertSub');
+
+  let state = "idle"; // idle | study | quiz | result
+  let centerBanner = null; // 例: "正解"
+  let centerBannerTop = null; // 例: "5連続"
+
+
+  // --- サウンド（Web Audio：外部ファイル不要） ---
+  let audioCtx = null;
+
+  function ensureAudio(){
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if(!AC) return null;
+    if(!audioCtx) audioCtx = new AC();
+    if(audioCtx.state === "suspended"){
+      // iOS/Safari対策：ユーザー操作の直後にresume
+      audioCtx.resume().catch(()=>{});
+    }
+    return audioCtx;
+  }
+
+  function tone(freq, dur, type="sine", gain=0.08, when=0){
+    const ac = ensureAudio();
+    if(!ac) return;
+    const t0 = ac.currentTime + when;
+
+    const o = ac.createOscillator();
+    const g = ac.createGain();
+
+    o.type = type;
+    o.frequency.setValueAtTime(freq, t0);
+
+    // クリックノイズ防止：短いエンベロープ
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(gain, t0 + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+
+    o.connect(g);
+    g.connect(ac.destination);
+
+    o.start(t0);
+    o.stop(t0 + dur + 0.02);
+  }
+
+  function soundCorrect(){
+    // ピンポン（高め→少し低め）
+    tone(1047, 0.09, "sine", 0.09, 0.00); // C6
+    tone(784,  0.13, "sine", 0.085, 0.10); // G5
+  }
+
+  function soundWrong(){
+    // ブー（低い持続音）
+    tone(165, 0.45, "square", 0.06, 0.00);
+  }
+
+  function soundLevelUp(){
+    // テレレレー（上昇フレーズ）
+    const freqs = [523, 659, 784, 988]; // C5 E5 G5 B5
+    freqs.forEach((f, i) => {
+      tone(f, 0.10, "sine", 0.08, i * 0.09);
+    });
+    tone(1047, 0.22, "sine", 0.085, 0.36); // 最後に伸ばす C6
+  }
+function showInsert(title, sub, ms=650, done){
+    try{
+      if(!insertEl || !insertTitleEl || !insertSubEl){
+        if(done) done();
+        return;
+      }
+      insertTitleEl.textContent = title || "";
+      insertSubEl.textContent = sub || "";
+      insertEl.classList.add("show");
+      // reflow
+      void insertEl.offsetWidth;
+
+      setTimeout(() => {
+        insertEl.classList.remove("show");
+        setTimeout(() => { if(done) done(); }, 220);
+      }, ms);
+    }catch(e){
+      // 失敗してもゲームは続行
+      if(done) done();
+    }
+  }
+
+
+  let quizMode = "faceToName"; // "faceToName" or "nameToFace"
+  const REVERSE_PROB = 0.15; // 逆クイズの確率（低め）
+
+  let idx = 0;
+  let people = [];
+  let quizTargetIndex = 0;
+  let answered = false;
+
+  let streak = 0;
+  let best = 0;
+
+  function updateScore(){
+    if(countEl) countEl.textContent = `人数: ${personCount}`;
+    streakEl.textContent = `連続: ${streak}`;
+    bestEl.textContent = `最高: ${best}`;
+  }
+
+  function newRound(){
+    centerBanner = null;
+    centerBannerTop = null;
+
+    showInsert("覚えるターン", `${personCount}人`, 650, () => {
+      // 名前をNつ選ぶ（重複なし）
+      const seed = randomSeed();
+      const rng = mulberry32(seed);
+
+      const names = TOP20_SURNAME.slice();
+      shuffleInPlace(names, rng);
+      const pick = names.slice(0, personCount);
+
+      // 顔をNつ作る
+      const faces = genDistinctFaces(seed ^ 0xA5A5A5A5, personCount);
+      people = pick.map((name, i) => ({ name, face: faces[i] }));
+
+      state = "study";
+      idx = 0;
+      answered = false;
+
+      showStudy();
+    });
+  }
+
+  function showStudy(){
+    centerBanner = null;
+    centerBannerTop = null;
+
+    const p = people[idx];
+    renderFaceAsync(p.face);
+
+    stageH2.textContent = "覚える";
+    badge.textContent = `${idx+1}/${personCount}`;
+
+    nameBig.style.display = "";
+    nameBig.textContent = p.name;
+
+    choicesEl.style.display = "none";
+    choicesEl.innerHTML = "";
+
+    msg.textContent = "この顔の名前を覚えてください。";
+
+    btnStart.style.display = "none";
+    btnNextRound.style.display = "none";
+    btnNext.style.display = "";
+    btnNext.textContent = (idx === personCount-1) ? "クイズへ" : "次へ";
+  }
+
+  function startQuiz(){
+    centerBanner = null;
+    centerBannerTop = null;
+
+    state = "quiz";
+    answered = false;
+
+    // このラウンド内で出題するターゲット + 出題形式
+    const rng = mulberry32(randomSeed());
+    quizTargetIndex = Math.floor(rng() * personCount);
+    quizMode = (rng() < REVERSE_PROB) ? "nameToFace" : "faceToName";
+
+    const target = people[quizTargetIndex];
+
+    stageH2.textContent = (quizMode === "nameToFace") ? "逆クイズ" : "クイズ";
+    badge.textContent = `${personCount}択`;
+
+    choicesEl.style.display = "";
+    choicesEl.innerHTML = "";
+
+    btnNext.style.display = "none";
+    btnNextRound.style.display = "none";
+
+    if(quizMode === "faceToName"){
+      // 顔→名前（従来）
+      nameBig.style.display = "none";
+      msg.textContent = "この顔の名前はどれ？";
+      renderFaceAsync(target.face);
+
+      // 選択肢（名前）
+      const opts = people.map(p => p.name);
+      shuffleInPlace(opts, rng);
+      opts.forEach(name => {
+        const b = document.createElement("button");
+        b.textContent = name;
+        b.onclick = () => choose(name);
+        choicesEl.appendChild(b);
+      });
+    }else{
+      // 名前→顔（逆クイズ）
+      nameBig.style.display = "";
+      nameBig.textContent = target.name;
+      msg.textContent = "この名前はどの顔？";
+
+      // メインは「？」表示
+      drawQuestionMark();
+
+      // 選択肢（顔）
+      people.forEach((p, i) => {
+        const b = document.createElement("button");
+        b.className = "choiceFace";
+        const c = document.createElement("canvas");
+        b.appendChild(c);
+        b.onclick = () => choose(i);
+        choicesEl.appendChild(b);
+
+        // 描画はDOMに入ってから
+        requestAnimationFrame(() => drawFaceTo(c, p.face));
+      });
+    }
+  }
+
+  function choose(ans){
+    if(state !== "quiz" || answered) return;
+    answered = true;
+
+    const correctName = people[quizTargetIndex].name;
+
+    // 正誤判定（出題形式で変える）
+    const ok = (quizMode === "faceToName")
+      ? (ans === correctName)
+      : (ans === quizTargetIndex);
+
+    // ボタンを無効化＋正解ハイライト
+    const btns = [...choicesEl.querySelectorAll("button")];
+    btns.forEach((b, i) => {
+      b.disabled = true;
+      if(quizMode === "faceToName"){
+        if(b.textContent === correctName) b.classList.add("primary");
+      }else{
+        if(i === quizTargetIndex) b.classList.add("primary");
+      }
+    });
+
+    if(ok){
+      streak++;
+      best = Math.max(best, streak);
+
+      // 5連続ごとに人数アップ（最大まで）
+      let leveled = false;
+      if(streak % LEVEL_STEP === 0 && personCount < MAX_COUNT){
+        personCount++;
+        leveled = true;
+      }
+
+      // 音：通常はピンポン、人数が増えたらテレレレー
+      if(leveled){ soundLevelUp(); } else { soundCorrect(); }
+
+      // 画面中央バナー
+      centerBanner = leveled ? "LEVEL UP" : "正解";
+      centerBannerTop = `${streak}連続`;
+
+      // 下のテキストは出さない（バナーのみ）
+      msg.textContent = "";
+
+      // 正解時はターゲットの顔を表示してバナーを重ねる
+      renderFaceAsync(people[quizTargetIndex].face);
+
+      btnNextRound.textContent = "次の問題";
+    }else{
+      // 音：ブー
+      soundWrong();
+
+      // 不正解：最初から（人数も2に戻す）
+      centerBanner = null;
+      centerBannerTop = null;
+
+      msg.textContent = `不正解。正解は「${correctName}」\n最初からやり直し（人数は${MIN_COUNT}人に戻ります）`;
+      streak = 0;
+      personCount = MIN_COUNT;
+
+      btnNextRound.textContent = "最初から";
+    }
+
+    updateScore();
+    state = "result";
+    btnNextRound.style.display = "";
+  }
+
+  // --- イベント ---
+  btnStart.addEventListener("click", () => {
+    if(state === "idle"){
+      newRound();
+    }
+  });
+
+  btnNext.addEventListener("click", () => {
+    if(state !== "study") return;
+    if(idx < personCount-1){
+      idx++;
+      showStudy();
+    }else{
+      showInsert("回答ターン", `${personCount}択`, 650, () => startQuiz());
+    }
+  });
+
+  btnNextRound.addEventListener("click", () => {
+    // 次のラウンドへ（毎回ランダム）
+    newRound();
+  });
+
+    window.addEventListener("resize", () => {
+    if(!people.length) return;
+
+    if(state === "study"){
+      renderFaceAsync(people[idx].face);
+      return;
+    }
+
+    if(state === "quiz" || state === "result"){
+      // 正解バナー表示中は、モードに関係なくターゲット顔を再描画
+      if(centerBanner){
+        renderFaceAsync(people[quizTargetIndex].face);
+        return;
+      }
+
+      if(quizMode === "faceToName"){
+        renderFaceAsync(people[quizTargetIndex].face);
+      }else{
+        drawQuestionMark();
+        // 選択肢の顔も描き直し
+        const btns = [...choicesEl.querySelectorAll("button")];
+        btns.forEach((b, i) => {
+          const c = b.querySelector("canvas");
+          if(c) drawFaceTo(c, people[i].face);
+        });
+      }
+    }
+  });
+
+
+  
+  // 最初のタップ/クリックでオーディオを有効化（Safari対策）
+  document.addEventListener("pointerdown", () => { ensureAudio(); }, { once: true });
+  document.addEventListener("touchstart", () => { ensureAudio(); }, { once: true });
+
+// 初期表示：軽いガイド（顔は出さない）
+  updateScore();
+  state = "idle";
+})();;
+</script>
+
+<script>
+  // PWA: service worker register
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("./service-worker.js").catch(() => {});
+    });
+  }
+</script>
+
+</body>
+</html>
