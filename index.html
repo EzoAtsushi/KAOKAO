@@ -32,9 +32,12 @@
     .stageTitle h2{margin:0;font-size:15px;}
     .badge{font-size:12px;padding:4px 10px;border:1px solid var(--border);border-radius:999px;color:var(--muted);}
     .score{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;}
+
     canvas{
-      width:min(92vw,520px);
-      height:min(92vw,520px);
+      width:100%;
+      max-width:520px;
+      aspect-ratio:1/1;
+      height:auto;
       display:block;
       margin: 0 auto;
       border:1px solid var(--border);
@@ -50,7 +53,7 @@
     button.primary{background:var(--btn);color:var(--btnText);border-color:var(--btn);}
     button:disabled{opacity:.55;cursor:not-allowed;}
     .choiceFace{padding:8px;}
-    .choiceFace canvas{width:100%;height:auto;display:block;border:1px solid var(--border);border-radius:10px;background:#fff;}
+    .choiceFace canvas{width:100%;aspect-ratio:1/1;height:auto;display:block;border:1px solid var(--border);border-radius:10px;background:#fff;}
     .choiceFace{background:#fff;}
 
     .msg{margin-top:10px;padding:10px 12px;border-radius:12px;border:1px dashed var(--border);color:var(--muted);font-size:13px;line-height:1.55;white-space:pre-wrap;}

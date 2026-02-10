@@ -1,5 +1,5 @@
 /* KAOKAO service worker (cache-first) */
-const CACHE_NAME = "kaokao-v1";
+const CACHE_NAME = "kaokao-v2";
 const ASSETS = [
   "./",
   "./index.html",
